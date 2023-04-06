@@ -1,14 +1,25 @@
 #include <pthread.h>
+#include <stdio.h>
+
+void *print_numbers(void* arg) {
+  for (int i = 0; i < 5; i++){
+    printf("%s: %i\n", (char*) arg, i);
+
+  }
+    pthread_exit(NULL);
+}
 
 int main(void) {
-  // main thread is the one running by default
+  pthread_t thread1;
+  pthread_t thread2;
+  
+  char *thread_name = "thread 1";
+  char *thread2_name = "thread 2";
 
-  // have main thread spawn two other threads
-    // both threads will run same function
-      // print out nums 0-5, with thread name as prefix "thread i: x"
+  pthread_create(&thread1, NULL, print_numbers, (void*) thread_name);
+  pthread_create(&thread2, NULL, print_numbers, (void*) thread2_name);
 
-  // in pthread_create(), pass thread name to new thread. make it a char*.
-    // first call: thread1. second call: thread2
-  // use pthread_join to wait from completions
- return 0;
+  pthread_join(thread1, NULL);
+  pthread_join(thread2, NULL);
+  return 0;
 }
