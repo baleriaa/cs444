@@ -12,19 +12,21 @@ int transaction_count;
 int seat_taken_count = 0;
 pthread_mutex_t locking_mutex = PTHREAD_MUTEX_INITIALIZER;
 
+int is_free(int n) {
+    return seat_taken[n] == 0;
+}
+
 int reserve_seat(int n)
 {
     pthread_mutex_lock(&locking_mutex);
-    // Attempt to reserve seat number n
-
-    // If the seat is already taken, return -1
-    // Otherwise mark the seat as taken and return 0
-    // This function should also increment seat_taken_count if the seat
-    // wasn't already taken.
-    
-    // TODO
-
-    return 0;  // Change as necessary--included so it will build
+    if (is_free(n)) {
+        seat_taken[n] = 1;
+        seat_taken_count++;
+        pthread_mutex_unlock(&locking_mutex);
+    } else {
+        pthread_mutex_unlock(&locking_mutex);
+        return -1;
+    }
 }
 
 int free_seat(int n)
@@ -42,9 +44,7 @@ int free_seat(int n)
     return 0;  // Change as necessary--included so it will build
 }
 
-int is_free(int n) {
-    return seat_taken[n] == 0;
-}
+
 
 int verify_seat_count(void) {
     // This function counts all the taken seats in the seat_taken[]
