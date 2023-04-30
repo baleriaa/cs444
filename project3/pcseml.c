@@ -3,56 +3,95 @@
 #include "eventbuf.c"
 #include <semaphore.h>
 #include <pthread.h>
+#include <fcntl.h>
+#include <unistd.h>
 
-sem_t *sem_open_temp(const char *name, int value)
-{
-    sem_t *sem;
+struct eventbuf *event_buffer;
+sem_t *items;
+sem_t *mutex;
+sem_t *spaces;
 
-    // Create the semaphore
-    if ((sem = sem_open(name, O_CREAT, 0600, value)) == SEM_FAILED)
-        return SEM_FAILED;
-
-    // Unlink it so it will go away after this process exits
-    if (sem_unlink(name) == -1) {
-        sem_close(sem);
-        return SEM_FAILED;
-    }
-
-    return sem;
-}
+int events;
 
 void *producer(void *arg) {
-// event = waitForEvent()
+  int *producer_number = arg;
 
-// spaces.wait()
-// mutex.wait()
-// buffer.add(event)
-// mutex.signal()
-// items.signal()
+  for (int i = 0; i < events; i++) {
+    int event_number = *producer_number * 100 + i;
+    sem_wait(spaces);
+    sem_wait(mutex);
+    printf("P %d: adding event %d\n", *producer_number, event_number);
+    eventbuf_add(event_buffer, event_number);
+    sem_post(mutex);
+    sem_post(items);
+  }
+
+  printf("P%d: exiting\n", *producer_number);
+  return NULL;
 }
 
 void *consumer(void *arg) {
-// items.wait()
-// mutex.wait()
-// event = buffer.get()
-// mutex.signal()
-// spaces.signal()
-// event.process()
+  int *id = arg;
+
+  while (1) {
+    sem_wait(items);
+    sem_wait(mutex);
+    if (eventbuf_empty(event_buffer)) {
+      sem_post(mutex);
+      sem_post(items);
+      break;
+    }
+
+    int event = eventbuf_get(event_buffer);
+    printf("Consumer %d: Got event %d\n", *id, event);
+    sem_post(mutex);
+    sem_post(spaces);
+  }
+
+  printf("Consumer %d: exiting\n", *id);
+  return NULL;
 }
 
 int main(int argc, char *argv[]) {
-  
-}
-// Parse the command line
+  if (argc != 5) {
+    fprintf(stderr, "Error: Incorrect number of args. Plese enter 4 args.\n");
+  }
 
-// Create the event  buffer
-// This should be a global variable so all threads can see it
-// Start the correct number of producer threads
-// Each thread will be passed a pointer to an int, its ID number
-// Start the correct number of consumer threads
-// Each thread will be passed a pointer to an int, its ID number
-// Wait for all producer threads to complete
-// Notify all the consumer threads that they're done
-// This should cause them to exit
-// Wait for all consumer threads to complete
-// Free the event buffer
+  int producers_num = atoi(argv[1]);
+  int consumers_num = atoi(argv[2]);
+  events = atoi(argv[3]);
+  int buffer_max = atoi(argv[4]);
+  event_buffer = eventbuf_create(); 
+  mutex = sem_open_temp("mutex", 1);
+  items = sem_open_temp("items", 0);
+  spaces = sem_open_temp("spaces", buffer_max);
+  pthread_t producers[producers_num];
+  pthread_t consumers[consumers_num];
+
+  for (int i = 0; i < producers_num; i++) {
+    int *producer_number = malloc(sizeof(int));
+    *producer_number = i;
+    pthread_create(&producers[i], NULL, producer, producer_number);
+  }
+
+  for (int i = 0; i < consumers_num; i++) {
+    int *consumer_number = malloc(sizeof(int));
+    *consumer_number = i;
+    pthread_create(&consumers[i], NULL, consumer, consumer_number);
+  }
+
+  for (int i = 0; i < producers_num; i++) {
+    pthread_join(producers[i], NULL);
+  }
+
+  for (int i = 0; i < buffer_max; i++) {
+    sem_post(items);
+  }
+
+  for (int i = 0; i < consumers_num; i++) {
+    pthread_join(consumers[i], NULL);
+  }
+
+  eventbuf_free(event_buffer);
+  return 0;
+}
