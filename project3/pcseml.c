@@ -20,7 +20,7 @@ void *producer(void *arg) {
     int event_number = *producer_number * 100 + i;
     sem_wait(spaces);
     sem_wait(mutex);
-    printf("P %d: adding event %d\n", *producer_number, event_number);
+    printf("P%d: adding event %d\n", *producer_number, event_number);
     eventbuf_add(event_buffer, event_number);
     sem_post(mutex);
     sem_post(items);
@@ -43,12 +43,12 @@ void *consumer(void *arg) {
     }
 
     int event = eventbuf_get(event_buffer);
-    printf("Consumer %d: Got event %d\n", *id, event);
+    printf("C%d: got event %d\n", *id, event);
     sem_post(mutex);
     sem_post(spaces);
   }
 
-  printf("Consumer %d: exiting\n", *id);
+  printf("C%d: exiting\n", *id);
   return NULL;
 }
 
