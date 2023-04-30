@@ -1,5 +1,6 @@
 #ifndef EVENTBUF_H
 #define EVENTBUF_H
+#include <semaphore.h>
 
 /*
  * Functions:
